@@ -16,15 +16,12 @@ document.addEventListener("DOMContentLoaded", function () {
     saveSettingsButton.addEventListener("click", () => {
         let newColor = textColorInput.value.trim();
         if (!newColor) {
-            // Default to white if input is empty
             newColor = "#FFFFFF";
         } else if (isValidHexColor(newColor)) {
-            // Normalize color to include # prefix
             if (!newColor.startsWith("#")) {
                 newColor = "#" + newColor;
             }
         } else {
-            // Invalid color, don't apply
             return;
         }
         applyTextColor(newColor);
@@ -72,7 +69,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function isValidHexColor(color) {
-        // Accept hex colors with or without # prefix
         return /^#?([A-Fa-f0-9]{3}){1,2}$/.test(color);
     }
 });

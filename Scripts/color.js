@@ -14,11 +14,19 @@ document.addEventListener("DOMContentLoaded", function () {
     textColorInput.value = existingTextColor;
 
     saveSettingsButton.addEventListener("click", () => {
-        const newColor = textColorInput.value.trim();
-        if (newColor && isValidHexColor(newColor)) {
-            applyTextColor(newColor);
-            localStorage.setItem("textColor", newColor);
+        let newColor = textColorInput.value.trim();
+        if (!newColor) {
+            newColor = "#FFFFFF";
+        } else if (isValidHexColor(newColor)) {
+            if (!newColor.startsWith("#")) {
+                newColor = "#" + newColor;
+            }
+        } else {
+            return;
         }
+        applyTextColor(newColor);
+        localStorage.setItem("textColor", newColor);
+        textColorInput.value = newColor;
     });
 
     function applyTextColor(color) {
@@ -61,6 +69,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function isValidHexColor(color) {
-        return /^#([A-Fa-f0-9]{3}){1,2}$/.test(color);
+        return /^#?([A-Fa-f0-9]{3}){1,2}$/.test(color);
     }
 });

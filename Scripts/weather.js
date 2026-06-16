@@ -8,11 +8,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveSettingsBtn = document.getElementById('save-weather-settings');
 
     function openModal() {
-        const widgetRect = weatherWidget.getBoundingClientRect();
-        modal.style.top = `${widgetRect.bottom + window.scrollY}px`;
-        modal.style.left = `${widgetRect.left + window.scrollX}px`;
+        modal.style.display = 'block';
+        const gap = 8;
+        const w = weatherWidget.getBoundingClientRect();
+        const mw = modal.offsetWidth, mh = modal.offsetHeight;
+
+        let left = Math.max(gap, Math.min(w.left, window.innerWidth - mw - gap));
+        let top = w.bottom + gap;
+        if (top + mh + gap > window.innerHeight) top = w.top - mh - gap;
+        top = Math.max(gap, top);
+
+        modal.style.top = `${top}px`;
+        modal.style.left = `${left}px`;
         modal.classList.add('show');
-        modal.style.display = 'block'; 
         apiKeyInput.value = localStorage.getItem('apiKey') || '';
         locationInput.value = localStorage.getItem('location') || '';
         tempUnitSelect.value = localStorage.getItem('tempUnit') || 'C';

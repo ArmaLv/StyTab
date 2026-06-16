@@ -16,3 +16,169 @@
   text-align: center;
   white-space: nowrap;
 }
+
+.lge-input-shield {
+  position: fixed;
+  z-index: 9001;
+  cursor: grab;
+  outline: 2px dashed rgba(255, 255, 255, 0.4);
+  outline-offset: 5px;
+  border-radius: 6px;
+  pointer-events: auto;
+  transition: outline-color 0.15s;
+}
+
+.lge-input-shield:hover {
+  outline-color: rgba(255, 255, 255, 0.85);
+}
+
+.lge-input-shield.lge-shield-dragging {
+  cursor: grabbing;
+  outline-color: #00b894;
+  outline-style: solid;
+}
+
+.layout-widget.lge-draggable:hover {
+  z-index: 10;
+}
+
+.layout-widget.lge-dragging {
+  z-index: 100;
+}
+
+.lge-drag-label {
+  position: fixed;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.15s;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  z-index: 9002;
+}
+
+.lge-drag-label.lge-label-visible {
+  opacity: 1;
+}
+
+#lge-pill {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 40px;
+  padding: 8px 8px 8px 16px;
+  z-index: 9000;
+
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.35s cubic-bezier(0.22, 0.68, 0, 1.2);
+  font-family: inherit;
+}
+
+#lge-pill.lge-pill-visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+#lge-pill-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  padding-right: 4px;
+}
+
+.lge-pill-btn {
+  padding: 6px 16px;
+  border-radius: 30px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+
+  color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.1);
+}
+
+.lge-pill-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.lge-pill-toggle.lge-toggle-on {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.22);
+}
+
+.lge-guide {
+  position: fixed;
+  z-index: 9000;
+  background: #00b894;
+  box-shadow: 0 0 4px rgba(0, 184, 148, 0.9);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.lge-guide-v {
+  width: 1px;
+}
+
+.lge-guide-h {
+  height: 1px;
+}
+
+.lge-guide.lge-guide-visible {
+  opacity: 1;
+}
+
+.lge-guide::before,
+.lge-guide::after {
+  content: "";
+  position: absolute;
+  background: #00b894;
+}
+
+.lge-guide-v::before,
+.lge-guide-v::after {
+  left: -2px;
+  width: 5px;
+  height: 2px;
+}
+
+.lge-guide-v::before {
+  top: 0;
+}
+
+.lge-guide-v::after {
+  bottom: 0;
+}
+
+.lge-guide-h::before,
+.lge-guide-h::after {
+  top: -2px;
+  height: 5px;
+  width: 2px;
+}
+
+.lge-guide-h::before {
+  left: 0;
+}
+
+.lge-guide-h::after {
+  right: 0;
+}

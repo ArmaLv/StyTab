@@ -9,11 +9,11 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const DEFAULTS = {
-    "greeting-display":    { x: 50, y: 38 },
-    "clock":               { x: 50, y: 46 },
-    "search-box":          { x: 50, y: 58 },
-    "quick-links-section": { x: 50, y: 70 },
-    "weather-widget":      { x: 88, y:  8 },
+    "greeting-display":    { x: 50, y: 33 },
+    "clock":               { x: 50, y: 44 },
+    "search-box":          { x: 50, y: 56 },
+    "quick-links-section": { x: 50, y: 67 },
+    "weather-widget":      { x: 3.5, y:  5 },
   };
 
   const STYLE_OVERRIDES = {
@@ -81,69 +81,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
   loadPositions();
 
-  function injectStyles() {
-    if (document.getElementById("lge-styles")) return;
-    const s = document.createElement("style");
-    s.id = "lge-styles";
-    s.textContent = `
-      .lge-input-shield {
-        position: fixed;
-        z-index: 9001;
-        cursor: grab;
-        outline: 2px dashed rgba(255,255,255,0.4);
-        outline-offset: 5px;
-        border-radius: 6px;
-        pointer-events: auto;
-        transition: outline-color 0.15s;
-      }
-      .lge-input-shield:hover { outline-color: rgba(255,255,255,0.85); }
-      .lge-input-shield.lge-shield-dragging {
-        cursor: grabbing;
-        outline-color: #00b894;
-        outline-style: solid;
-      }
-      .layout-widget.lge-draggable:hover { z-index: 10; }
-      .layout-widget.lge-dragging        { z-index: 100; }
-      .lge-drag-label {
-        position: fixed;
-        font-size: 10px; font-weight: 700; white-space: nowrap;
-        pointer-events: none; letter-spacing: 0.06em; text-transform: uppercase;
-        opacity: 0; transition: opacity 0.15s;
-        text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-        z-index: 9002;
-      }
-      .lge-drag-label.lge-label-visible { opacity: 1; }
-      #lge-pill {
-        position: fixed; bottom: 28px; left: 50%;
-        transform: translateX(-50%) translateY(80px);
-        display: flex; align-items: center; gap: 6px;
-        background: rgba(14,18,24,0.92);
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 40px; padding: 8px 8px 8px 16px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-        backdrop-filter: blur(16px); z-index: 9000;
-        transition: transform 0.35s cubic-bezier(.22,.68,0,1.2);
-        font-family: inherit;
-      }
-      #lge-pill.lge-pill-visible { transform: translateX(-50%) translateY(0); }
-      #lge-pill-label { font-size: 12px; color: rgba(255,255,255,0.5); font-weight: 600; padding-right: 4px; }
-      .lge-pill-btn {
-        padding: 6px 16px; border-radius: 30px; border: none;
-        font-size: 12px; font-weight: 700; cursor: pointer;
-        transition: all 0.18s; font-family: inherit;
-      }
-      #lge-pill-cancel { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
-      #lge-pill-cancel:hover { background: rgba(255,255,255,0.18); color: #fff; }
-      #lge-pill-save { background: #00b894; color: #fff; }
-      #lge-pill-save:hover { background: #00cba6; }
-    `;
-    document.head.appendChild(s);
-  }
 
   let dragActive = false;
   let snapshot   = {};
   const cleanups  = [];
   const shieldMap = new Map();
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  const SNAP_THRESHOLD = 6;
+  let snapEnabled = localStorage.getItem("lge_snap") !== "false";
+  let guideV = null, guideH = null;
+
+  function setGuide(axis, pos, start, end) {
+    const g = axis === "v" ? guideV : guideH;
+    if (!g) return;
+    if (pos == null) { g.classList.remove("lge-guide-visible"); return; }
+    if (axis === "v") {
+      g.style.left   = `${pos}px`;
+      g.style.top    = `${start}px`;
+      g.style.height = `${end - start}px`;
+    } else {
+      g.style.top   = `${pos}px`;
+      g.style.left  = `${start}px`;
+      g.style.width = `${end - start}px`;
+    }
+    g.classList.add("lge-guide-visible");
+  }
+
+  function bestSnap(points, targets) {
+    let best = null;
+    for (const p of points) {
+      for (const t of targets) {
+        const d = t.pos - p;
+        if (Math.abs(d) <= SNAP_THRESHOLD && (!best || Math.abs(d) < Math.abs(best.delta)))
+          best = { delta: d, pos: t.pos, min: t.min, max: t.max };
+      }
+    }
+    return best;
+  }
 
   function coverRect(el, rect) {
     el.style.left   = `${rect.left}px`;
@@ -173,6 +149,12 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function buildShields(reg) {
+    guideV = document.createElement("div");
+    guideV.className = "lge-guide lge-guide-v";
+    guideH = document.createElement("div");
+    guideH.className = "lge-guide lge-guide-h";
+    document.body.append(guideV, guideH);
+
     Object.entries(reg).forEach(([id, meta]) => {
       const native = document.getElementById(id);
       if (!native || isHidden(native)) return;
@@ -201,7 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
         el.tabIndex = -1;
       });
 
-      let startMx, startMy, startPx, startPy;
+      let startMx, startMy, startPx, startPy, targets;
 
       function syncShield() {
         const r = native.getBoundingClientRect();
@@ -210,18 +192,50 @@ document.addEventListener("DOMContentLoaded", function () {
         label.style.top  = `${r.top - 22}px`;
       }
 
+      function collectTargets() {
+        const W = window.innerWidth, H = window.innerHeight;
+        const xs = [0, W / 2, W].map(pos => ({ pos, min: 0, max: H }));
+        const ys = [0, H / 2, H].map(pos => ({ pos, min: 0, max: W }));
+        shieldMap.forEach((entry, otherId) => {
+          if (otherId === id) return;
+          const r = entry.native.getBoundingClientRect();
+          [r.left, r.left + r.width / 2, r.right].forEach(pos =>
+            xs.push({ pos, min: r.top, max: r.bottom }));
+          [r.top, r.top + r.height / 2, r.bottom].forEach(pos =>
+            ys.push({ pos, min: r.left, max: r.right }));
+        });
+        return { xs, ys };
+      }
+
       function onMove(e) {
         const client = e.touches ? e.touches[0] : e;
-        const nx = Math.max(1, Math.min(99, startPx + ((client.clientX - startMx) / window.innerWidth)  * 100));
-        const ny = Math.max(1, Math.min(99, startPy + ((client.clientY - startMy) / window.innerHeight) * 100));
-        wrapper.style.left = `${nx}%`;
-        wrapper.style.top  = `${ny}%`;
+        let cx = (startPx / 100) * window.innerWidth  + (client.clientX - startMx);
+        let cy = (startPy / 100) * window.innerHeight + (client.clientY - startMy);
+
+        if (snapEnabled) {
+          const r = native.getBoundingClientRect();
+          const hw = r.width / 2, hh = r.height / 2;
+          const sx = bestSnap([cx - hw, cx, cx + hw], targets.xs);
+          const sy = bestSnap([cy - hh, cy, cy + hh], targets.ys);
+          if (sx) cx += sx.delta;
+          if (sy) cy += sy.delta;
+
+          if (sx) setGuide("v", sx.pos, Math.min(sx.min, cy - hh), Math.max(sx.max, cy + hh));
+          else    setGuide("v", null);
+          if (sy) setGuide("h", sy.pos, Math.min(sy.min, cx - hw), Math.max(sy.max, cx + hw));
+          else    setGuide("h", null);
+        }
+
+        wrapper.style.left = `${clamp((cx / window.innerWidth)  * 100, 1, 99)}%`;
+        wrapper.style.top  = `${clamp((cy / window.innerHeight) * 100, 1, 99)}%`;
         syncShield();
       }
 
       function onUp() {
         wrapper.classList.remove("lge-dragging");
         shield.classList.remove("lge-shield-dragging");
+        setGuide("v", null);
+        setGuide("h", null);
         window.removeEventListener("mousemove", onMove);
         window.removeEventListener("mouseup",   onUp);
         window.removeEventListener("touchmove", onMove);
@@ -235,6 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
         startMy = client.clientY;
         startPx = parseFloat(wrapper.style.left);
         startPy = parseFloat(wrapper.style.top);
+        targets = collectTargets();
         wrapper.classList.add("lge-dragging");
         shield.classList.add("lge-shield-dragging");
         window.addEventListener("mousemove", onMove);
@@ -275,13 +290,15 @@ document.addEventListener("DOMContentLoaded", function () {
       resizeObs.disconnect();
       window.removeEventListener("resize", syncAllShields);
       shieldMap.clear();
+      guideV.remove();
+      guideH.remove();
+      guideV = guideH = null;
     });
   }
 
   function enterDragMode() {
     if (dragActive) return;
     dragActive = true;
-    injectStyles();
 
     const reg = buildRegistry();
 
@@ -334,10 +351,36 @@ document.addEventListener("DOMContentLoaded", function () {
     pillEl.id = "lge-pill";
     pillEl.innerHTML = `
       <span id="lge-pill-label">Layout Edit Mode</span>
+      <button class="lge-pill-btn lge-pill-toggle" id="lge-pill-snap"></button>
+      <button class="lge-pill-btn" id="lge-pill-reset">Reset</button>
       <button class="lge-pill-btn" id="lge-pill-cancel">Cancel</button>
       <button class="lge-pill-btn" id="lge-pill-save">Save</button>`;
     document.body.appendChild(pillEl);
     requestAnimationFrame(() => requestAnimationFrame(() => pillEl.classList.add("lge-pill-visible")));
+
+    const snapBtn = pillEl.querySelector("#lge-pill-snap");
+    const renderSnap = () => {
+      snapBtn.textContent = `Snap: ${snapEnabled ? "On" : "Off"}`;
+      snapBtn.classList.toggle("lge-toggle-on", snapEnabled);
+    };
+    renderSnap();
+    snapBtn.addEventListener("click", () => {
+      snapEnabled = !snapEnabled;
+      localStorage.setItem("lge_snap", snapEnabled);
+      renderSnap();
+      if (!snapEnabled) { setGuide("v", null); setGuide("h", null); }
+    });
+
+    pillEl.querySelector("#lge-pill-reset").addEventListener("click", () => {
+      Object.keys(buildRegistry()).forEach(id => {
+        const d = DEFAULTS[id] || { x: 50, y: 50 };
+        applyPosition(id, d.x, d.y);
+      });
+      setGuide("v", null);
+      setGuide("h", null);
+      syncAllShields();
+    });
+
     pillEl.querySelector("#lge-pill-cancel").addEventListener("click", () => exitDragMode(false));
     pillEl.querySelector("#lge-pill-save").addEventListener("click",   () => exitDragMode(true));
   }

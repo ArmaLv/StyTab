@@ -7,6 +7,7 @@
   <link rel="icon" type="image/x-icon" href="icons/Dizzy.svg">
   <link rel="stylesheet" href="styles/animations.css">
   <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/layout.css">
   <link rel="stylesheet" href="styles/gradient.css">
   <link rel="stylesheet" href="styles/quick-links.css">
   <link rel="stylesheet" href="styles/search-bar.css">
@@ -53,6 +54,9 @@
 
   <!-- Clock section -->
   <div class="clock" id="clock">Loading time...</div>
+
+  <!-- Freeform layout canvas (widgets are moved here by JS) -->
+  <div id="layout-canvas"></div>
 
     <!-- Search box -->
     <div class="search-box">
@@ -176,6 +180,9 @@
           <option value="12">12-hour</option>
           <option value="24">24-hour</option>
         </select>
+
+        <label>Widget Positions:</label>
+        <button id="open-layout-editor" type="button">Open Layout Editor</button>
       </div>
     </details>
 
@@ -257,7 +264,7 @@
   <script src="Scripts/settings_search.js"></script>
   <script src="Scripts/settings_visibility.js"></script>
   <script src="Scripts/settings_time.js"></script>
-
+  <script src="Scripts/settings_position.js"></script>
   <script src="Scripts/clock.js"></script>
   <script src="Scripts/quicklinks.js"></script>
   <script src="Scripts/weather.js"></script>

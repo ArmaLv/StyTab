@@ -1,10 +1,11 @@
 /* Update quick-links styling */
 .quick-links {
-  flex-wrap: wrap; 
-  gap: 15px; 
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
   justify-content: center;
   align-items: center;
-  padding: 0 20px; 
+  padding: 10px 20px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -19,7 +20,6 @@
   background-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); 
   transition: all 0.3s ease;
-  margin-top: 20px;
   flex-shrink: 0;
   white-space: nowrap;
   animation: fadeIn 2s ease-in-out;

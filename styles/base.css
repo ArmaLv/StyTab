@@ -1,11 +1,8 @@
-/* Import Quicksand font */
 @font-face {
   font-family: 'Quicksand';
   src: url('../fonts/Quicksand.ttf') format('truetype');
 }
 
-
-/* Base Styles */
 body {
   font-family: 'Quicksand', Arial, sans-serif;
   color: white;
@@ -25,3 +22,7 @@ h1 {
   margin-bottom: 20px;
 }
 
+#greeting-display,
+#clock {
+  margin: 0;
+}

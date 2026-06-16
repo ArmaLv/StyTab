@@ -1,0 +1,18 @@
+#layout-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.layout-widget {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 90vw;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  white-space: nowrap;
+}

@@ -215,14 +215,12 @@
 
 /* ---- Settings: "use your own app" wizard --------------------------------- */
 .spotify-setup {
-  margin: 6px 0 12px;
   font-size: 13px;
 }
 
 .spotify-setup-title {
+  font-size: 14px;
   font-weight: 600;
-  color: #00cba6;
-  margin: 0 0 6px;
 }
 
 .spotify-setup-steps {

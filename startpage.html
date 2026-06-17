@@ -245,10 +245,41 @@
       </summary>
 
       <div class="settings-section-content">
-        <p id="spotify-status">Spotify account: Disconnected</p>
-        <small>Enable "Show Spotify" in Display Settings, then connect to control playback on your active device.</small>
+
+        <div class="spotify-setup">
+          <div class="spotify-setup-title">SETUP: <br> Use your own Spotify app</div>
+
+          <ol class="spotify-setup-steps">
+            <li>
+              Open the dashboard and click Create app (tick Web API):
+              <button id="spotify-open-dashboard" type="button">Open Spotify Dashboard</button>
+            </li>
+            <li>
+              Add this to Redirect URI
+              <div class="spotify-copy-row">
+                <input id="spotify-redirect-uri" type="text" readonly
+                  value="https://stytab-callback.vercel.app/callback.html">
+                <button id="spotify-copy-redirect" type="button" title="Copy redirect URI">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                </button>
+              </div>
+            </li>
+            <li>
+              Paste your <b>Client ID</b> here:
+              <input id="spotify-client-id" type="text" placeholder="Your Spotify Client ID"
+                autocomplete="off" spellcheck="false">
+            </li>
+          </ol>
+        </div>
+
+        <div class="spotify-setup-title">Enable: <br> "Show Spotify" in Display Settings</div>
         <button id="spotify-connect" type="button" disabled>Connect Spotify</button>
         <button id="spotify-logout" type="button" style="display: none;">Log Out</button>
+        <p class="spotify-setup-title" id="spotify-status">Spotify account: Disconnected</p>
+
 
         <label for="spotify-layout">Player Layout:</label>
         <select id="spotify-layout">

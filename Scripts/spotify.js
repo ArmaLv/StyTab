@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
   const clientId = '96c80947f534424785c248138a0c68cb';
-  const scope = 'user-read-playback-state user-modify-playback-state';
+  const scope = 'user-read-playback-state user-read-currently-playing user-modify-playback-state';
   const POLL_MS = 5000;
 
   const AUTH_REDIRECT = 'https://stytab-callback.vercel.app/callback.html';
@@ -124,6 +124,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (el.connect) el.connect.disabled = !(el.toggle && el.toggle.checked);
   }
 
+  function markNoPremium() {
+    el.widget.classList.add('spotify-no-premium');
+  }
+
   let track = { progressMs: 0, durationMs: 0, isPlaying: false, syncAt: 0 };
 
   function formatTime(ms) {
@@ -189,6 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const res = await api(path, { method });
     if (!res) return;
     if (res.status === 401) return disconnect();
+    if (res.status === 403) return markNoPremium();
     fetchNowPlaying();
   }
 
@@ -196,6 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const res = await api('/me/player');
     if (!res) return;
     if (res.status === 401) return disconnect();
+    if (res.status === 403) return markNoPremium();
     if (res.status !== 200) return;
     const playing = (await res.json()).is_playing;
     control('PUT', `/me/player/${playing ? 'pause' : 'play'}`);

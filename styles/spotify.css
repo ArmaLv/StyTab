@@ -213,6 +213,10 @@
   display: none !important;
 }
 
+.spotify-widget.spotify-no-premium .spotify-controls {
+  display: none;
+}
+
 /* ---- Layouts (selectable from settings) ---------------------------------- */
 
 .spotify-widget.spotify-layout-card .spotify-now {

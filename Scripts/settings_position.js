@@ -105,9 +105,11 @@ document.addEventListener("DOMContentLoaded", function () {
   let snapEnabled = localStorage.getItem("lge_snap") !== "false";
   let guideV = null, guideH = null;
 
+  const REF_W = window.innerWidth, REF_H = window.innerHeight;
+
   function anchorAxis(pct, ref, cur, half, m) {
     let c;
-    if (pct >= 40 && pct <= 60)      c = (pct / 100) * cur;
+    if (pct >= 40 && pct <= 60)      c = cur / 2 + ((pct / 100) * ref - ref / 2);
     else if (pct < 40)               c = (pct / 100) * ref;
     else                             c = cur - ref + (pct / 100) * ref;
     if (half * 2 + m * 2 >= cur) return cur / 2;
@@ -118,8 +120,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const dx = parseFloat(wrapper.dataset.x);
     const dy = parseFloat(wrapper.dataset.y);
     if (isNaN(dx) || isNaN(dy)) return;
-    const refW = parseFloat(wrapper.dataset.refw) || window.innerWidth;
-    const refH = parseFloat(wrapper.dataset.refh) || window.innerHeight;
+    const refW = parseFloat(wrapper.dataset.refw) || REF_W;
+    const refH = parseFloat(wrapper.dataset.refh) || REF_H;
     const W = window.innerWidth, H = window.innerHeight, m = 4;
     const rect = wrapper.getBoundingClientRect();
     const cx = anchorAxis(dx, refW, W, rect.width / 2, m);
@@ -128,11 +130,35 @@ document.addEventListener("DOMContentLoaded", function () {
     wrapper.style.top  = `${(cy / H) * 100}%`;
   }
 
+  function deoverlap() {
+    const GAP = 6, H = window.innerHeight;
+    const items = Array.from(document.querySelectorAll(".layout-widget"))
+      .map(el => ({ el, r: el.getBoundingClientRect() }))
+      .filter(it => it.r.width > 0 && it.r.height > 0)
+      .sort((a, b) => a.r.top - b.r.top);
+
+    for (let i = 1; i < items.length; i++) {
+      const a = items[i];
+      let minTop = -Infinity;
+      for (let j = 0; j < i; j++) {
+        const b = items[j];
+        const overlapX = a.r.right > b.r.left && a.r.left < b.r.right;
+        if (overlapX) minTop = Math.max(minTop, b.r.bottom + GAP);
+      }
+      if (minTop > -Infinity && a.r.top < minTop) {
+        const centerPx = a.r.top + a.r.height / 2 + (minTop - a.r.top);
+        a.el.style.top = `${(centerPx / H) * 100}%`;
+        a.r = a.el.getBoundingClientRect();
+      }
+    }
+  }
+
   let reflowScheduled = false;
   function reflowAll() {
     reflowScheduled = false;
     if (dragActive) return;
     document.querySelectorAll(".layout-widget").forEach(reflowWidget);
+    deoverlap();
   }
   function scheduleReflow() {
     if (reflowScheduled || dragActive) return;

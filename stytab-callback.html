@@ -1,0 +1,85 @@
+<!--
+  StyTab · Spotify OAuth redirect (manual-deploy version)
+  ========================================================
+  For those people who would rather host the Spotify login redirect themselves instead of
+  using my provided default https://stytab-callback.vercel.app/callback.html.
+
+  Why not just just use the extension's own page as the redirect URI?
+  
+  If it was possible do you think I would have added this shitty workaround in the first place?
+  Spotify requires the OAuth redirect URI to be a single, fixed URL registered in
+  the developer dashboard (Atleast that is what I have found, if you can find a better workaround please do). 
+  A browser extension can't use its own page for this:
+  Firefox assigns every install a random moz-extension:// UUID, so there's no
+  stable extension URL to register. This page is that one stable URL. So, it simply
+  receives the result from Spotify and hands it off to whichever install started
+  the login.
+
+  Fuck you, I don't trust you bitch. Tell me how to use my own deployment?
+
+  1. Rename this file to callback.html elsewhere and host it at a public HTTPS URL (any
+     static host works: Vercel, Netlify, GitHub Pages, Cloudflare Pages, your own
+     server, etc.) so it is served at e.g. https://your-host.example/callback.html.
+     The deployed filename must match the URL you use in steps 2-4.
+  2. Add that exact URL to "Redirect URIs" in your Spotify app dashboard
+     (https://developer.spotify.com/dashboard).
+  3. Set the same URL as AUTH_REDIRECT in Scripts/spotify.js so the extension
+     points at your deployment.
+  4. Add your URL's origin to web_accessible_resources -> matches in manifest.json
+     (replace the existing "https://stytab-callback.vercel.app/*" entry, e.g.
+     "https://your-host.example/*"). Without this the browser blocks your page
+     from handing the result back to the extension and the bounce silently fails.
+
+  Tell me more
+
+  - Spotify redirects here with ?code, ?state (and ?error on failure).
+  - The extension packed its own per-install callback URL into `state` (as
+    base64url JSON: { nonce, ret }). We decode `ret` and only ever bounce to a
+    moz-extension:// or chrome-extension:// address, so there is never an arbitrary site.
+  - So forward code/state/error to that extension callback, which finishes the
+    PKCE token exchange. This page never sees or stores any tokens.
+  - If the automatic redirect is blocked, a "Continue to StyTab" link appears as
+    a manual fallback.
+-->
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StyTab · Spotify</title>
+</head>
+<body>
+  <p id="msg">Finishing sign-in…</p>
+  <a id="continue" href="#" style="display:none">Continue to StyTab</a>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var code  = params.get('code')  || '';
+      var state = params.get('state') || '';
+      var error = params.get('error') || '';
+
+      var ret = '';
+      try {
+        var b64 = state.replace(/-/g, '+').replace(/_/g, '/');
+        ret = (JSON.parse(atob(b64)) || {}).ret || '';
+      } catch (e) {}
+
+      if (!/^(moz-extension|chrome-extension):\/\//.test(ret)) {
+        document.getElementById('msg').textContent =
+          'Could not determine where to return. You can close this window.';
+        return;
+      }
+
+      var dest = ret + '?' + new URLSearchParams({ code: code, state: state, error: error });
+
+      var link = document.getElementById('continue');
+      link.href = dest;
+      link.style.display = 'inline';
+
+      window.location.replace(dest);
+    })();
+  </script>
+</body>
+</html>

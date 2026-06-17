@@ -1,4 +1,7 @@
-/* Search Bar (for #search-query inside .search-box) */
+.search-box {
+  display: none;
+}
+
 .search-box #search-query {
   width: 400px;
   padding: 12px;

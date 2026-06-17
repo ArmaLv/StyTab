@@ -1,6 +1,7 @@
 @font-face {
   font-family: 'Quicksand';
   src: url('../fonts/Quicksand.ttf') format('truetype');
+  font-display: swap;
 }
 
 body {

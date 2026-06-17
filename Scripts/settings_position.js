@@ -9,11 +9,12 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   const DEFAULTS = {
-    "greeting-display":    { x: 50, y: 33 },
-    "clock":               { x: 50, y: 44 },
-    "search-box":          { x: 50, y: 56 },
-    "quick-links-section": { x: 50, y: 67 },
-    "weather-widget":      { x: 3.5, y:  5 },
+    "greeting-display":    { x: 50, y: 41 },
+    "clock":               { x: 50, y: 50 },
+    "search-box":          { x: 50, y: 76 },
+    "quick-links-section": { x: 50, y: 60 },
+    "weather-widget":      { x: 3.5, y: 5 },
+    "spotify-widget":      { x: 10, y: 88 },
   };
 
   const STYLE_OVERRIDES = {
@@ -52,35 +53,45 @@ document.addEventListener("DOMContentLoaded", function () {
     return el;
   }
 
-  function applyPosition(id, x, y) {
+  function applyPosition(id, x, y, scale = 1, refW, refH) {
     const wrapper = getWrapper(id);
+    wrapper.dataset.x = x;
+    wrapper.dataset.y = y;
+    wrapper.dataset.scale = scale;
+    if (refW) wrapper.dataset.refw = refW; else delete wrapper.dataset.refw;
+    if (refH) wrapper.dataset.refh = refH; else delete wrapper.dataset.refh;
     wrapper.style.left = `${x}%`;
     wrapper.style.top  = `${y}%`;
+    wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
     const native = document.getElementById(id);
     if (native && native.parentNode !== wrapper) {
       if (STYLE_OVERRIDES[id]) Object.assign(native.style, STYLE_OVERRIDES[id]);
       wrapper.appendChild(native);
     }
+    if (!dragActive) reflowWidget(wrapper);
   }
 
   function getSavedPos(meta, id) {
     try {
       const p = JSON.parse(localStorage.getItem(meta.key));
-      if (p && typeof p.x === "number") return p;
+      if (p && typeof p.x === "number")
+        return {
+          x: p.x, y: p.y,
+          scale: typeof p.scale === "number" ? p.scale : 1,
+          refW: typeof p.w === "number" ? p.w : undefined,
+          refH: typeof p.h === "number" ? p.h : undefined,
+        };
     } catch {}
-    return { ...(DEFAULTS[id] || { x: 50, y: 50 }) };
+    return { ...(DEFAULTS[id] || { x: 50, y: 50 }), scale: 1 };
   }
 
   function loadPositions() {
     const reg = buildRegistry();
     Object.entries(reg).forEach(([id, meta]) => {
       const pos = getSavedPos(meta, id);
-      applyPosition(id, pos.x, pos.y);
+      applyPosition(id, pos.x, pos.y, pos.scale, pos.refW, pos.refH);
     });
   }
-
-  loadPositions();
-
 
   let dragActive = false;
   let snapshot   = {};
@@ -90,8 +101,50 @@ document.addEventListener("DOMContentLoaded", function () {
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   const SNAP_THRESHOLD = 6;
+  const SCALE_MIN = 0.4, SCALE_MAX = 3;
   let snapEnabled = localStorage.getItem("lge_snap") !== "false";
   let guideV = null, guideH = null;
+
+  function anchorAxis(pct, ref, cur, half, m) {
+    let c;
+    if (pct >= 40 && pct <= 60)      c = (pct / 100) * cur;
+    else if (pct < 40)               c = (pct / 100) * ref;
+    else                             c = cur - ref + (pct / 100) * ref;
+    if (half * 2 + m * 2 >= cur) return cur / 2;
+    return clamp(c, half + m, cur - half - m);
+  }
+
+  function reflowWidget(wrapper) {
+    const dx = parseFloat(wrapper.dataset.x);
+    const dy = parseFloat(wrapper.dataset.y);
+    if (isNaN(dx) || isNaN(dy)) return;
+    const refW = parseFloat(wrapper.dataset.refw) || window.innerWidth;
+    const refH = parseFloat(wrapper.dataset.refh) || window.innerHeight;
+    const W = window.innerWidth, H = window.innerHeight, m = 4;
+    const rect = wrapper.getBoundingClientRect();
+    const cx = anchorAxis(dx, refW, W, rect.width / 2, m);
+    const cy = anchorAxis(dy, refH, H, rect.height / 2, m);
+    wrapper.style.left = `${(cx / W) * 100}%`;
+    wrapper.style.top  = `${(cy / H) * 100}%`;
+  }
+
+  let reflowScheduled = false;
+  function reflowAll() {
+    reflowScheduled = false;
+    if (dragActive) return;
+    document.querySelectorAll(".layout-widget").forEach(reflowWidget);
+  }
+  function scheduleReflow() {
+    if (reflowScheduled || dragActive) return;
+    reflowScheduled = true;
+    requestAnimationFrame(reflowAll);
+  }
+
+  loadPositions();
+  window.addEventListener("resize", scheduleReflow);
+  window.addEventListener("load", reflowAll);
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(reflowAll);
 
   function setGuide(axis, pos, start, end) {
     const g = axis === "v" ? guideV : guideH;
@@ -167,6 +220,10 @@ document.addEventListener("DOMContentLoaded", function () {
       shield.className = "lge-input-shield";
       coverRect(shield, rect);
       document.body.appendChild(shield);
+
+      const handle = document.createElement("div");
+      handle.className = "lge-resize-handle";
+      shield.appendChild(handle);
 
       const label = document.createElement("div");
       label.className = "lge-drag-label";
@@ -258,6 +315,43 @@ document.addEventListener("DOMContentLoaded", function () {
         window.addEventListener("touchend",  onUp);
       }
 
+      let rsCx, rsCy, rsStartDist, rsStartScale;
+
+      function onResizeMove(e) {
+        const client = e.touches ? e.touches[0] : e;
+        const dist = Math.hypot(client.clientX - rsCx, client.clientY - rsCy);
+        const scale = clamp(rsStartScale * (dist / rsStartDist), SCALE_MIN, SCALE_MAX);
+        wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        wrapper.dataset.scale = scale;
+        syncShield();
+      }
+
+      function onResizeUp() {
+        wrapper.classList.remove("lge-dragging");
+        shield.classList.remove("lge-shield-dragging");
+        window.removeEventListener("mousemove", onResizeMove);
+        window.removeEventListener("mouseup",   onResizeUp);
+        window.removeEventListener("touchmove", onResizeMove);
+        window.removeEventListener("touchend",  onResizeUp);
+      }
+
+      function onResizeDown(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const client = e.touches ? e.touches[0] : e;
+        const r = native.getBoundingClientRect();
+        rsCx = r.left + r.width / 2;
+        rsCy = r.top + r.height / 2;
+        rsStartScale = parseFloat(wrapper.dataset.scale) || 1;
+        rsStartDist = Math.hypot(client.clientX - rsCx, client.clientY - rsCy) || 1;
+        wrapper.classList.add("lge-dragging");
+        shield.classList.add("lge-shield-dragging");
+        window.addEventListener("mousemove", onResizeMove);
+        window.addEventListener("mouseup",   onResizeUp);
+        window.addEventListener("touchmove", onResizeMove, { passive: false });
+        window.addEventListener("touchend",  onResizeUp);
+      }
+
       shieldMap.set(id, { shield, label, native, wrapper });
 
       shield.addEventListener("mouseenter", () => label.classList.add("lge-label-visible"));
@@ -267,10 +361,14 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       shield.addEventListener("mousedown",  onDown);
       shield.addEventListener("touchstart", onDown, { passive: false });
+      handle.addEventListener("mousedown",  onResizeDown);
+      handle.addEventListener("touchstart", onResizeDown, { passive: false });
 
       cleanups.push(() => {
         shield.removeEventListener("mousedown",  onDown);
         shield.removeEventListener("touchstart", onDown);
+        handle.removeEventListener("mousedown",  onResizeDown);
+        handle.removeEventListener("touchstart", onResizeDown);
         wrapper.querySelectorAll("input, button, a, select, textarea").forEach(el => {
           if (!("lgeTabIndex" in el.dataset)) return;
           el.tabIndex = Number(el.dataset.lgeTabIndex);
@@ -332,15 +430,25 @@ document.addEventListener("DOMContentLoaded", function () {
         const wrapper = getWrapper(id);
         const x = parseFloat(wrapper.style.left);
         const y = parseFloat(wrapper.style.top);
-        if (!isNaN(x) && !isNaN(y)) localStorage.setItem(meta.key, JSON.stringify({ x, y }));
+        const scale = parseFloat(wrapper.dataset.scale) || 1;
+        const w = window.innerWidth, h = window.innerHeight;
+        if (!isNaN(x) && !isNaN(y)) {
+          wrapper.dataset.x = x;
+          wrapper.dataset.y = y;
+          wrapper.dataset.refw = w;
+          wrapper.dataset.refh = h;
+          localStorage.setItem(meta.key, JSON.stringify({ x, y, scale, w, h }));
+        }
       });
     } else {
-      Object.entries(snapshot).forEach(([id, pos]) => applyPosition(id, pos.x, pos.y));
+      Object.entries(snapshot).forEach(([id, pos]) =>
+        applyPosition(id, pos.x, pos.y, pos.scale, pos.refW, pos.refH));
     }
 
     cleanups.forEach(fn => fn());
     cleanups.length = 0;
     hidePill();
+    reflowAll();
   }
 
   let pillEl = null;
@@ -374,7 +482,7 @@ document.addEventListener("DOMContentLoaded", function () {
     pillEl.querySelector("#lge-pill-reset").addEventListener("click", () => {
       Object.keys(buildRegistry()).forEach(id => {
         const d = DEFAULTS[id] || { x: 50, y: 50 };
-        applyPosition(id, d.x, d.y);
+        applyPosition(id, d.x, d.y, 1, window.innerWidth, window.innerHeight);
       });
       setGuide("v", null);
       setGuide("h", null);

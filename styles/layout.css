@@ -38,6 +38,26 @@
   outline-style: solid;
 }
 
+.lge-resize-handle {
+  position: absolute;
+  right: -10px;
+  bottom: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00b894;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: nwse-resize;
+  pointer-events: auto;
+  z-index: 9003;
+  transition: transform 0.12s ease;
+}
+
+.lge-resize-handle:hover {
+  transform: scale(1.2);
+}
+
 .layout-widget.lge-draggable:hover {
   z-index: 10;
 }

@@ -30,3 +30,7 @@ h1{
 .weather-widget{
   animation: fadeIn2 3.5s ease-in-out;
 }
+
+.spotify-widget{
+  animation: fadeIn2 2.5s ease-in-out;
+}

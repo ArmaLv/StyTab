@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="styles/search-bar.css">
   <link rel="stylesheet" href="styles/settings.css">
   <link rel="stylesheet" href="styles/weather.css">
+  <link rel="stylesheet" href="styles/spotify.css">
 </head>
 <body>
 
@@ -68,6 +69,46 @@
 
   <!-- Quick links section -->
   <div class="quick-links" id="quick-links-section"></div>
+
+  <!-- Spotify Player Widget -->
+  <div class="spotify-widget" id="spotify-widget"
+       data-widget="spotify-widget" data-widget-label="Spotify" data-widget-color="#1db954">
+    <div class="spotify-disconnected" id="spotify-disconnected">
+      <span class="spotify-hint">Connect Spotify in Settings</span>
+    </div>
+    <div class="spotify-player" id="spotify-player" style="display: none;">
+      <div class="spotify-now">
+        <img id="spotify-album-art" class="spotify-album-art" alt="" style="display: none;">
+        <div class="spotify-meta">
+          <div id="spotify-title" class="spotify-title">Nothing playing</div>
+          <div id="spotify-artist" class="spotify-artist">—</div>
+        </div>
+      </div>
+      <!-- Progress bar stays visible -->
+      <div class="spotify-progress">
+        <span id="spotify-time-current" class="spotify-time">0:00</span>
+        <div class="spotify-progress-track">
+          <div id="spotify-progress-bar" class="spotify-progress-bar"></div>
+        </div>
+        <span id="spotify-time-total" class="spotify-time">0:00</span>
+      </div>
+      <!-- Controls hidden until the widget is hovered -->
+      <div class="spotify-extra">
+        <div class="spotify-controls">
+          <button id="spotify-prev" class="spotify-ctrl" title="Previous" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+          </button>
+          <button id="spotify-play-pause" class="spotify-ctrl" title="Play/Pause" aria-label="Play/Pause">
+            <svg class="spotify-icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="spotify-icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          <button id="spotify-next" class="spotify-ctrl" title="Next" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Settings icon -->
   <div class="settings" id="settings-icon">
@@ -138,6 +179,14 @@
             <span class="slider"></span>
           </label>
         </div>
+
+        <div class="toggle-container">
+          <label for="toggle-spotify">Show Spotify:</label>
+          <label class="switch">
+            <input type="checkbox" id="toggle-spotify">
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
     </details>
 
@@ -183,6 +232,62 @@
 
         <label>Widget Positions:</label>
         <button id="open-layout-editor" type="button">Open Layout Editor</button>
+      </div>
+    </details>
+
+    <!-- Spotify Section -->
+    <details class="settings-section">
+      <summary class="settings-section-header">
+        <h3>Spotify</h3>
+        <svg class="collapse-icon" viewBox="0 0 24 24" width="16" height="16">
+          <path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6 1.41 1.41z" fill="white"/>
+        </svg>
+      </summary>
+
+      <div class="settings-section-content">
+        <p id="spotify-status">Spotify account: Disconnected</p>
+        <small>Enable "Show Spotify" in Display Settings, then connect to control playback on your active device.</small>
+        <button id="spotify-connect" type="button" disabled>Connect Spotify</button>
+        <button id="spotify-logout" type="button" style="display: none;">Log Out</button>
+
+        <label for="spotify-layout">Player Layout:</label>
+        <select id="spotify-layout">
+          <option value="compact">Compact</option>
+          <option value="card">Card</option>
+          <option value="minimal">Minimal</option>
+        </select>
+
+        <div class="toggle-container">
+          <label for="spotify-controls-hover">Controls on hover only:</label>
+          <label class="switch">
+            <input type="checkbox" id="spotify-controls-hover">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-container">
+          <label for="spotify-progress-hover">Progress bar on hover only:</label>
+          <label class="switch">
+            <input type="checkbox" id="spotify-progress-hover">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-container">
+          <label for="spotify-hide-bg">Hide widget background:</label>
+          <label class="switch">
+            <input type="checkbox" id="spotify-hide-bg">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="toggle-container">
+          <label for="spotify-disable-controls">Disable controls:</label>
+          <label class="switch">
+            <input type="checkbox" id="spotify-disable-controls">
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
     </details>
 
@@ -268,6 +373,7 @@
   <script src="Scripts/clock.js"></script>
   <script src="Scripts/quicklinks.js"></script>
   <script src="Scripts/weather.js"></script>
+  <script src="Scripts/spotify.js"></script>
   <script src="Scripts/color.js"></script>
   <script src="Scripts/no_highlight.js"></script>
   <script src="Scripts/background-manager.js"></script>

@@ -78,6 +78,11 @@
   letter-spacing: 0.5px;
 }
 
+.settings-sidebar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* Dropdown options styling */
 .settings-sidebar select option {
   background-color: rgba(30, 30, 30);

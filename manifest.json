@@ -12,11 +12,19 @@
     "storage"
   ],
   "host_permissions": [
-    "https://api.pirateweather.net/*"
+    "https://api.pirateweather.net/*",
+    "https://api.spotify.com/*",
+    "https://accounts.spotify.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["callback.html"],
+      "matches": ["https://stytab-callback.vercel.app/*", "https://accounts.spotify.com/*"]
+    }
+  ],
   "icons": {
     "16": "icons/16.png",
     "32": "icons/32.png",

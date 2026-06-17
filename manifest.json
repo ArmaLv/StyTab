@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "StyTab",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Stytab - A minimalist Startpage that meets your needs.",
   "chrome_url_overrides": {
     "newtab": "startpage.html"
@@ -23,6 +23,13 @@
     {
       "resources": ["callback.html"],
       "matches": ["https://stytab-callback.vercel.app/*", "https://accounts.spotify.com/*"]
+    }
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://developer.spotify.com/dashboard/*"],
+      "js": ["Scripts/spotify-dashboard-autofill.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

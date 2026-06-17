@@ -213,6 +213,48 @@
   display: none !important;
 }
 
+/* ---- Settings: "use your own app" wizard --------------------------------- */
+.spotify-setup {
+  margin: 6px 0 12px;
+  font-size: 13px;
+}
+
+.spotify-setup-title {
+  font-weight: 600;
+  color: #00cba6;
+  margin: 0 0 6px;
+}
+
+.spotify-setup-steps {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.spotify-setup-steps li {
+  line-height: 1.45;
+}
+
+.spotify-copy-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.spotify-copy-row input {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0 !important;
+}
+
+.spotify-copy-row button {
+  width: auto !important;
+  margin-bottom: 0 !important;
+  white-space: nowrap;
+}
+
 .spotify-widget.spotify-no-premium .spotify-controls {
   display: none;
 }

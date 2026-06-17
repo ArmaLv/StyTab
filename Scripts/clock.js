@@ -24,5 +24,14 @@ function updateClock() {
     }
 }
 
-setInterval(updateClock, 1000);
+let clockTimer = setInterval(updateClock, 1000);
 updateClock();
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    clearInterval(clockTimer);
+  } else {
+    updateClock();
+    clockTimer = setInterval(updateClock, 1000);
+  }
+});

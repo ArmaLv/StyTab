@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const clientId = '96c80947f534424785c248138a0c68cb';
+  const DEFAULT_CLIENT_ID = '96c80947f534424785c248138a0c68cb';
+  const CLIENT_ID_KEY = 'spotify_client_id';
+  const getClientId = () => localStorage.getItem(CLIENT_ID_KEY) || DEFAULT_CLIENT_ID;
   const scope = 'user-read-playback-state user-read-currently-playing user-modify-playback-state';
   const POLL_MS = 5000;
 
@@ -80,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: refresh,
-          client_id: clientId,
+          client_id: getClientId(),
         }),
       });
       if (!res.ok) { disconnect(); return null; }
@@ -96,14 +98,22 @@ document.addEventListener('DOMContentLoaded', function () {
   async function api(path, options = {}) {
     const token = await getValidToken();
     if (!token) return null;
-    return fetch(`https://api.spotify.com/v1${path}`, {
-      ...options,
-      headers: { Authorization: `Bearer ${token}`, ...options.headers },
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      return await fetch(`https://api.spotify.com/v1${path}`, {
+        ...options,
+        signal: controller.signal,
+        headers: { Authorization: `Bearer ${token}`, ...options.headers },
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   let isConnected = false;
   let hasTrack = false;
+  let fetchingNowPlaying = false;
 
   function updateEmpty() {
     el.widget.classList.toggle('spotify-empty', isConnected && !hasTrack);
@@ -180,13 +190,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function fetchNowPlaying() {
-    const res = await api('/me/player/currently-playing');
-    if (!res) return;
-    if (res.status === 401) return disconnect();
-    if (res.status === 204) return renderTrack(null);
-    if (!res.ok) return;
-    const data = await res.json();
-    renderTrack(data.item, data.is_playing, data.progress_ms);
+    if (fetchingNowPlaying) return;
+    fetchingNowPlaying = true;
+    try {
+      const res = await api('/me/player/currently-playing');
+      if (!res) return;
+      if (res.status === 401) return disconnect();
+      if (res.status === 204) return renderTrack(null);
+      if (!res.ok) return;
+      const data = await res.json();
+      renderTrack(data.item, data.is_playing, data.progress_ms);
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error('Spotify: fetchNowPlaying error', err);
+    } finally {
+      fetchingNowPlaying = false;
+    }
   }
 
   async function control(method, path) {
@@ -215,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function () {
     localStorage.removeItem(RESULT_KEY);
 
     const authUrl = 'https://accounts.spotify.com/authorize?' + new URLSearchParams({
-      client_id: clientId,
+      client_id: getClientId(),
       response_type: 'code',
       redirect_uri: AUTH_REDIRECT,
       scope,
@@ -267,7 +285,7 @@ document.addEventListener('DOMContentLoaded', function () {
           grant_type: 'authorization_code',
           code,
           redirect_uri: AUTH_REDIRECT,
-          client_id: clientId,
+          client_id: getClientId(),
           code_verifier: localStorage.getItem(VERIFIER_KEY) || '',
         }),
       });
@@ -325,9 +343,63 @@ document.addEventListener('DOMContentLoaded', function () {
     applyAppearance();
   });
 
+  // "Use your own Spotify app" wizard.
+  const dashboardBtn = document.getElementById('spotify-open-dashboard');
+  if (dashboardBtn) dashboardBtn.addEventListener('click', () =>
+    window.open('https://developer.spotify.com/dashboard/create', '_blank', 'noopener'));
+
+  const copyBtn = document.getElementById('spotify-copy-redirect');
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(AUTH_REDIRECT).then(() => {
+      const original = copyBtn.textContent;
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = original; }, 1500);
+    }).catch(() => {});
+  });
+
+  const clientIdInput = document.getElementById('spotify-client-id');
+  if (clientIdInput) {
+    clientIdInput.value = localStorage.getItem(CLIENT_ID_KEY) || '';
+    clientIdInput.addEventListener('change', () => {
+      const v = clientIdInput.value.trim();
+      if (v) localStorage.setItem(CLIENT_ID_KEY, v);
+      else   localStorage.removeItem(CLIENT_ID_KEY);
+    });
+  }
+
+  const extStorage =
+    (typeof browser !== 'undefined' && browser.storage) ? browser.storage :
+    (typeof chrome  !== 'undefined' && chrome.storage)  ? chrome.storage  : null;
+  if (extStorage) {
+    const adopt = (id) => {
+      if (!id) return;
+      localStorage.setItem(CLIENT_ID_KEY, id);
+      if (clientIdInput) clientIdInput.value = id;
+      extStorage.local.remove('stytab_pending_client_id');
+    };
+    extStorage.local.get('stytab_pending_client_id')
+      .then(r => adopt(r && r.stytab_pending_client_id)).catch(() => {});
+    extStorage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes.stytab_pending_client_id)
+        adopt(changes.stytab_pending_client_id.newValue);
+    });
+  }
+
   setConnected(hasAuth());
   syncConnectEnabled();
   fetchNowPlaying();
-  setInterval(fetchNowPlaying, POLL_MS);
-  setInterval(renderProgress, 1000);
+
+  let pollTimer = setInterval(fetchNowPlaying, POLL_MS);
+  let progressTimer = setInterval(renderProgress, 1000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      clearInterval(pollTimer);
+      clearInterval(progressTimer);
+    } else {
+      fetchNowPlaying();
+      pollTimer = setInterval(fetchNowPlaying, POLL_MS);
+      progressTimer = setInterval(renderProgress, 1000);
+    }
+  });
 });

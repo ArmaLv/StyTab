@@ -351,9 +351,14 @@ document.addEventListener('DOMContentLoaded', function () {
   const copyBtn = document.getElementById('spotify-copy-redirect');
   if (copyBtn) copyBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(AUTH_REDIRECT).then(() => {
-      const original = copyBtn.innerHTML;
-      copyBtn.innerHTML = 'Copied!';
-      setTimeout(() => { copyBtn.innerHTML = original; }, 1500);
+      const icon = copyBtn.querySelector('.copy-icon');
+      const done = copyBtn.querySelector('.copy-done');
+      if (icon) icon.style.display = 'none';
+      if (done) done.style.display = '';
+      setTimeout(() => {
+        if (icon) icon.style.display = '';
+        if (done) done.style.display = 'none';
+      }, 1500);
     }).catch(() => {});
   });
 

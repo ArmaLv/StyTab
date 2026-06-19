@@ -147,7 +147,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       if (minTop > -Infinity && a.r.top < minTop) {
         const centerPx = a.r.top + a.r.height / 2 + (minTop - a.r.top);
-        a.el.style.top = `${(centerPx / H) * 100}%`;
+        const newTopPct = (centerPx / H) * 100;
+        a.el.style.top = `${newTopPct}%`;
+        a.el.dataset.y = newTopPct;
         a.r = a.el.getBoundingClientRect();
       }
     }
@@ -168,9 +170,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
   loadPositions();
   window.addEventListener("resize", scheduleReflow);
-  window.addEventListener("load", reflowAll);
+  function initialReflow() {
+    if (initialReflowDone) return;
+    initialReflowDone = true;
+    reflowAll();
+  }
 
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(reflowAll);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(initialReflow);
+  }
+  window.addEventListener("load", () => {
+    setTimeout(initialReflow, 150);
+  });
 
   function setGuide(axis, pos, start, end) {
     const g = axis === "v" ? guideV : guideH;

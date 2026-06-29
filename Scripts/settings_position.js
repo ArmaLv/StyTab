@@ -53,15 +53,44 @@ document.addEventListener("DOMContentLoaded", function () {
     return el;
   }
 
-  function applyPosition(id, x, y, scale = 1, refW, refH) {
+  const ANCHORS = {
+    "top-left":      (W, H) => [0,     0    ],
+    "top-center":    (W, H) => [W / 2, 0    ],
+    "top-right":     (W, H) => [W,     0    ],
+    "center-left":   (W, H) => [0,     H / 2],
+    "center":        (W, H) => [W / 2, H / 2],
+    "center-right":  (W, H) => [W,     H / 2],
+    "bottom-left":   (W, H) => [0,     H    ],
+    "bottom-center": (W, H) => [W / 2, H    ],
+    "bottom-right":  (W, H) => [W,     H    ],
+  };
+
+  function nearestAnchor(cx, cy, W, H) {
+    let best = null, bestDist = Infinity;
+    for (const [name, fn] of Object.entries(ANCHORS)) {
+      const [ax, ay] = fn(W, H);
+      const d = Math.hypot(cx - ax, cy - ay);
+      if (d < bestDist) { bestDist = d; best = name; }
+    }
+    return best;
+  }
+
+  function migrateOldPos(p) {
+    const W = typeof p.w === "number" ? p.w : window.innerWidth;
+    const H = typeof p.h === "number" ? p.h : window.innerHeight;
+    const cx = (p.x / 100) * W;
+    const cy = (p.y / 100) * H;
+    const anchor = nearestAnchor(cx, cy, W, H);
+    const [ax, ay] = ANCHORS[anchor](W, H);
+    return { anchor, dx: cx - ax, dy: cy - ay, scale: typeof p.scale === "number" ? p.scale : 1 };
+  }
+
+  function applyPosition(id, anchor, dx, dy, scale = 1) {
     const wrapper = getWrapper(id);
-    wrapper.dataset.x = x;
-    wrapper.dataset.y = y;
-    wrapper.dataset.scale = scale;
-    if (refW) wrapper.dataset.refw = refW; else delete wrapper.dataset.refw;
-    if (refH) wrapper.dataset.refh = refH; else delete wrapper.dataset.refh;
-    wrapper.style.left = `${x}%`;
-    wrapper.style.top  = `${y}%`;
+    wrapper.dataset.anchor = anchor;
+    wrapper.dataset.dx     = dx;
+    wrapper.dataset.dy     = dy;
+    wrapper.dataset.scale  = scale;
     wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
     const native = document.getElementById(id);
     if (native && native.parentNode !== wrapper) {
@@ -74,22 +103,41 @@ document.addEventListener("DOMContentLoaded", function () {
   function getSavedPos(meta, id) {
     try {
       const p = JSON.parse(localStorage.getItem(meta.key));
-      if (p && typeof p.x === "number")
-        return {
-          x: p.x, y: p.y,
-          scale: typeof p.scale === "number" ? p.scale : 1,
-          refW: typeof p.w === "number" ? p.w : undefined,
-          refH: typeof p.h === "number" ? p.h : undefined,
-        };
+      if (p) {
+        if (p.anchor && ANCHORS[p.anchor])
+          return { anchor: p.anchor, dx: p.dx || 0, dy: p.dy || 0, scale: typeof p.scale === "number" ? p.scale : 1 };
+        if (typeof p.x === "number")
+          return migrateOldPos(p);
+      }
     } catch {}
-    return { ...(DEFAULTS[id] || { x: 50, y: 50 }), scale: 1 };
+    const d = DEFAULTS[id] || { x: 50, y: 50 };
+    const W = window.innerWidth, H = window.innerHeight;
+    const cx = (d.x / 100) * W, cy = (d.y / 100) * H;
+    const anchor = nearestAnchor(cx, cy, W, H);
+    const [ax, ay] = ANCHORS[anchor](W, H);
+    return { anchor, dx: cx - ax, dy: cy - ay, scale: 1 };
+  }
+
+  function reflowWidget(wrapper) {
+    const anchor = wrapper.dataset.anchor || "center";
+    const dx = parseFloat(wrapper.dataset.dx) || 0;
+    const dy = parseFloat(wrapper.dataset.dy) || 0;
+    if (!ANCHORS[anchor]) return;
+    const W = window.innerWidth, H = window.innerHeight, m = 4;
+    const [ax, ay] = ANCHORS[anchor](W, H);
+    const rect = wrapper.getBoundingClientRect();
+    const hw = rect.width / 2, hh = rect.height / 2;
+    const cx = clamp(ax + dx, hw + m, W - hw - m);
+    const cy = clamp(ay + dy, hh + m, H - hh - m);
+    wrapper.style.left = `${(cx / W) * 100}%`;
+    wrapper.style.top  = `${(cy / H) * 100}%`;
   }
 
   function loadPositions() {
     const reg = buildRegistry();
     Object.entries(reg).forEach(([id, meta]) => {
       const pos = getSavedPos(meta, id);
-      applyPosition(id, pos.x, pos.y, pos.scale, pos.refW, pos.refH);
+      applyPosition(id, pos.anchor, pos.dx, pos.dy, pos.scale);
     });
   }
 
@@ -104,31 +152,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const SCALE_MIN = 0.4, SCALE_MAX = 3;
   let snapEnabled = localStorage.getItem("lge_snap") !== "false";
   let guideV = null, guideH = null;
-
-  const REF_W = window.innerWidth, REF_H = window.innerHeight;
-
-  function anchorAxis(pct, ref, cur, half, m) {
-    let c;
-    if (pct >= 40 && pct <= 60)      c = cur / 2 + ((pct / 100) * ref - ref / 2);
-    else if (pct < 40)               c = (pct / 100) * ref;
-    else                             c = cur - ref + (pct / 100) * ref;
-    if (half * 2 + m * 2 >= cur) return cur / 2;
-    return clamp(c, half + m, cur - half - m);
-  }
-
-  function reflowWidget(wrapper) {
-    const dx = parseFloat(wrapper.dataset.x);
-    const dy = parseFloat(wrapper.dataset.y);
-    if (isNaN(dx) || isNaN(dy)) return;
-    const refW = parseFloat(wrapper.dataset.refw) || REF_W;
-    const refH = parseFloat(wrapper.dataset.refh) || REF_H;
-    const W = window.innerWidth, H = window.innerHeight, m = 4;
-    const rect = wrapper.getBoundingClientRect();
-    const cx = anchorAxis(dx, refW, W, rect.width / 2, m);
-    const cy = anchorAxis(dy, refH, H, rect.height / 2, m);
-    wrapper.style.left = `${(cx / W) * 100}%`;
-    wrapper.style.top  = `${(cy / H) * 100}%`;
-  }
 
   function deoverlap() {
     const GAP = 6, H = window.innerHeight;
@@ -147,9 +170,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       if (minTop > -Infinity && a.r.top < minTop) {
         const centerPx = a.r.top + a.r.height / 2 + (minTop - a.r.top);
-        const newTopPct = (centerPx / H) * 100;
-        a.el.style.top = `${newTopPct}%`;
-        a.el.dataset.y = newTopPct;
+        a.el.style.top = `${(centerPx / H) * 100}%`;
         a.r = a.el.getBoundingClientRect();
       }
     }
@@ -170,6 +191,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   loadPositions();
   window.addEventListener("resize", scheduleReflow);
+
+  let initialReflowDone = false;
   function initialReflow() {
     if (initialReflowDone) return;
     initialReflowDone = true;
@@ -465,21 +488,24 @@ document.addEventListener("DOMContentLoaded", function () {
       const reg = buildRegistry();
       Object.entries(reg).forEach(([id, meta]) => {
         const wrapper = getWrapper(id);
-        const x = parseFloat(wrapper.style.left);
-        const y = parseFloat(wrapper.style.top);
+        const xPct = parseFloat(wrapper.style.left);
+        const yPct = parseFloat(wrapper.style.top);
         const scale = parseFloat(wrapper.dataset.scale) || 1;
-        const w = window.innerWidth, h = window.innerHeight;
-        if (!isNaN(x) && !isNaN(y)) {
-          wrapper.dataset.x = x;
-          wrapper.dataset.y = y;
-          wrapper.dataset.refw = w;
-          wrapper.dataset.refh = h;
-          localStorage.setItem(meta.key, JSON.stringify({ x, y, scale, w, h }));
-        }
+        if (isNaN(xPct) || isNaN(yPct)) return;
+        const W = window.innerWidth, H = window.innerHeight;
+        const cx = (xPct / 100) * W;
+        const cy = (yPct / 100) * H;
+        const anchor = nearestAnchor(cx, cy, W, H);
+        const [ax, ay] = ANCHORS[anchor](W, H);
+        const dx = cx - ax, dy = cy - ay;
+        wrapper.dataset.anchor = anchor;
+        wrapper.dataset.dx     = dx;
+        wrapper.dataset.dy     = dy;
+        localStorage.setItem(meta.key, JSON.stringify({ anchor, dx, dy, scale }));
       });
     } else {
       Object.entries(snapshot).forEach(([id, pos]) =>
-        applyPosition(id, pos.x, pos.y, pos.scale, pos.refW, pos.refH));
+        applyPosition(id, pos.anchor, pos.dx, pos.dy, pos.scale));
     }
 
     cleanups.forEach(fn => fn());
@@ -517,9 +543,13 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     pillEl.querySelector("#lge-pill-reset").addEventListener("click", () => {
+      const W = window.innerWidth, H = window.innerHeight;
       Object.keys(buildRegistry()).forEach(id => {
         const d = DEFAULTS[id] || { x: 50, y: 50 };
-        applyPosition(id, d.x, d.y, 1, window.innerWidth, window.innerHeight);
+        const cx = (d.x / 100) * W, cy = (d.y / 100) * H;
+        const anchor = nearestAnchor(cx, cy, W, H);
+        const [ax, ay] = ANCHORS[anchor](W, H);
+        applyPosition(id, anchor, cx - ax, cy - ay, 1);
       });
       setGuide("v", null);
       setGuide("h", null);

@@ -153,6 +153,74 @@
 
 
 
+.ql-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 5px 0;
+  padding: 3px 6px;
+  border-radius: 10px;
+  transition: background 0.15s, outline 0.15s;
+  cursor: default;
+}
+
+.ql-item a {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ql-drag-handle {
+  color: rgba(255, 255, 255, 0.35);
+  cursor: grab;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 2px;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.ql-drag-handle:active { cursor: grabbing; }
+.ql-item:hover .ql-drag-handle { color: rgba(255, 255, 255, 0.7); }
+
+.quicklinks-sidebar .ql-menu-btn,
+.quicklinks-sidebar .ql-edit-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 4px;
+  width: auto;
+  margin-bottom: 0;
+  outline: none;
+  flex-shrink: 0;
+  transition: color 0.2s, transform 0.2s;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.quicklinks-sidebar .ql-menu-btn:hover,
+.quicklinks-sidebar .ql-edit-btn:hover {
+  color: #fff;
+  transform: scale(1.2);
+  background: none;
+  box-shadow: none;
+}
+
+.ql-item .ql-action { display: none; }
+.ql-item.ql-expanded .ql-action { display: block; }
+
+.ql-item.ql-dragging { opacity: 0.35; }
+.ql-item.ql-drag-over {
+  background: rgba(255, 255, 255, 0.1);
+  outline: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
 /* Footer Styling */
 .footer { display: flex; justify-content: center; align-items: center; font-size: 15px; margin-top: auto; color: rgb(255, 255, 255); text-align: center;  padding-bottom: 10px; }
 #github-link { color: inherit; cursor: pointer; user-select: none; }

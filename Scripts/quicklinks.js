@@ -1,72 +1,160 @@
 document.addEventListener("DOMContentLoaded", function() {
-    // Quick Links Sidebar elements
-    const quickLinksIcon = document.getElementById("quicklinks-icon");
-    const quickLinksSidebar = document.getElementById("quicklinks-sidebar");
+    const quickLinksIcon        = document.getElementById("quicklinks-icon");
+    const quickLinksSidebar     = document.getElementById("quicklinks-sidebar");
     const closeQuickLinksButton = document.getElementById("close-quicklinks");
-    const quickLinksContainer = document.getElementById("quick-links-sidebar");
-    const quickLinksSection = document.getElementById("quick-links-section");
-    const addLinkButton = document.getElementById("add-link-button");
-    const quicklinkNameInput = document.getElementById("quicklink-name");
-    const quicklinkUrlInput = document.getElementById("quicklink-url");
-    const githubLink = document.getElementById("github-link");
+    const quickLinksContainer   = document.getElementById("quick-links-sidebar");
+    const quickLinksSection     = document.getElementById("quick-links-section");
+    const addLinkButton         = document.getElementById("add-link-button");
+    const quicklinkNameInput    = document.getElementById("quicklink-name");
+    const quicklinkUrlInput     = document.getElementById("quicklink-url");
+    const githubLink            = document.getElementById("github-link");
 
-    // Set the link to GitHub page (if you are seeing this don't ask why I made it so unconventional.)
-    const gitHubUrl = "https://github.com/StyingDev/StyTab"; 
+    const gitHubUrl = "https://github.com/StyingDev/StyTab";
+    githubLink.addEventListener("click", () => window.open(gitHubUrl, "_blank"));
 
-    githubLink.addEventListener("click", function() {
-        window.open(gitHubUrl, "_blank");
-    });
-
-    // Predefined static links
     const predefinedLinks = [
-        { name: "Reddit", url: "https://www.reddit.com" },
-        { name: "GitHub", url: "https://www.github.com" },
-        { name: "YouTube", url: "https://www.youtube.com" }
+        { name: "Reddit",  url: "https://www.reddit.com"  },
+        { name: "GitHub",  url: "https://www.github.com"  },
+        { name: "YouTube", url: "https://www.youtube.com" },
     ];
 
     function savePredefinedLinks() {
-        let quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
-        const predefinedSaved = localStorage.getItem("predefinedLinks");
+        if (localStorage.getItem("predefinedLinks")) return;
+        const quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
+        localStorage.setItem("quickLinks", JSON.stringify([...predefinedLinks, ...quickLinks]));
+        localStorage.setItem("predefinedLinks", true);
+    }
 
-        if (!predefinedSaved) {
-            quickLinks = [...predefinedLinks, ...quickLinks]; 
-            localStorage.setItem("quickLinks", JSON.stringify(quickLinks));
-            localStorage.setItem("predefinedLinks", true); 
+    let editingIndex = null;
+
+    function startEdit(index) {
+        const quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
+        quicklinkNameInput.value = quickLinks[index].name;
+        quicklinkUrlInput.value  = quickLinks[index].url;
+        editingIndex = index;
+        addLinkButton.textContent = "Save Changes";
+        quicklinkNameInput.focus();
+    }
+
+    function cancelEdit() {
+        editingIndex = null;
+        addLinkButton.textContent = "Add Link";
+        quicklinkNameInput.value = "";
+        quicklinkUrlInput.value  = "";
+    }
+
+    let dragSrcIndex = null;
+
+    function onDragStart(e) {
+        dragSrcIndex = parseInt(this.dataset.index);
+        this.classList.add("ql-dragging");
+        e.dataTransfer.effectAllowed = "move";
+    }
+
+    function onDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        this.classList.add("ql-drag-over");
+    }
+
+    function onDragLeave() {
+        this.classList.remove("ql-drag-over");
+    }
+
+    function onDrop(e) {
+        e.stopPropagation();
+        this.classList.remove("ql-drag-over");
+        const targetIndex = parseInt(this.dataset.index);
+        if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
+
+        const quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
+        const [moved] = quickLinks.splice(dragSrcIndex, 1);
+        quickLinks.splice(targetIndex, 0, moved);
+        localStorage.setItem("quickLinks", JSON.stringify(quickLinks));
+
+        if (editingIndex === dragSrcIndex) {
+            editingIndex = targetIndex;
+        } else if (dragSrcIndex < targetIndex) {
+            if (editingIndex > dragSrcIndex && editingIndex <= targetIndex) editingIndex--;
+        } else {
+            if (editingIndex >= targetIndex && editingIndex < dragSrcIndex) editingIndex++;
         }
+
+        loadQuickLinks();
+    }
+
+    function onDragEnd() {
+        document.querySelectorAll(".ql-item").forEach(el =>
+            el.classList.remove("ql-dragging", "ql-drag-over"));
+        dragSrcIndex = null;
     }
 
     function loadQuickLinks() {
         const quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
 
-        quickLinksContainer.innerHTML = ""; 
-        quickLinksSection.innerHTML = ""; 
+        quickLinksContainer.innerHTML = "";
+        quickLinksSection.innerHTML   = "";
 
         quickLinks.forEach((link, index) => {
-            const linkElement = document.createElement("a");
-            linkElement.href = link.url;
-            linkElement.textContent = link.name;
-            // linkElement.target = "_blank";
+            const row = document.createElement("div");
+            row.className = "ql-item";
+            row.draggable = true;
+            row.dataset.index = index;
 
-            const deleteButton = document.createElement("img");
-            deleteButton.src = "icons/Setting-close-icon.svg";
-            deleteButton.alt = "Delete Link";
-            deleteButton.classList.add("delete-link");
-            deleteButton.id = "delete-link";
-            deleteButton.style.width = "16px";
-            deleteButton.style.height = "16px";
-            deleteButton.style.marginLeft = "10px";
+            const handle = document.createElement("span");
+            handle.className = "ql-drag-handle";
+            handle.textContent = "⠿";
+            handle.title = "Drag to reorder";
 
-            deleteButton.addEventListener("click", () => {
+            const linkEl = document.createElement("a");
+            linkEl.href = link.url;
+            linkEl.textContent = link.name;
+
+            const menuBtn = document.createElement("button");
+            menuBtn.className = "ql-menu-btn";
+            menuBtn.title = "Options";
+            menuBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>`;
+            menuBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                const isOpen = row.classList.contains("ql-expanded");
+                document.querySelectorAll(".ql-item.ql-expanded").forEach(el => el.classList.remove("ql-expanded"));
+                if (!isOpen) row.classList.add("ql-expanded");
+            });
+
+            const editBtn = document.createElement("button");
+            editBtn.className = "ql-edit-btn ql-action";
+            editBtn.title = "Edit";
+            editBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>`;
+            editBtn.addEventListener("click", e => {
+                e.preventDefault();
+                e.stopPropagation();
+                row.classList.remove("ql-expanded");
+                startEdit(index);
+            });
+
+            const deleteBtn = document.createElement("img");
+            deleteBtn.src = "icons/Setting-close-icon.svg";
+            deleteBtn.alt = "Delete";
+            deleteBtn.classList.add("delete-link", "ql-action");
+            deleteBtn.style.cssText = "width:16px;height:16px;cursor:pointer;";
+            deleteBtn.addEventListener("click", e => {
+                e.stopPropagation();
+                row.classList.remove("ql-expanded");
                 removeQuickLink(index);
             });
 
-            const linkWrapper = document.createElement("div");
-            linkWrapper.appendChild(linkElement);
-            linkWrapper.appendChild(deleteButton);
-            quickLinksContainer.appendChild(linkWrapper); 
+            row.append(handle, linkEl, menuBtn, editBtn, deleteBtn);
+            row.addEventListener("dragstart",  onDragStart);
+            row.addEventListener("dragover",   onDragOver);
+            row.addEventListener("dragleave",  onDragLeave);
+            row.addEventListener("drop",       onDrop);
+            row.addEventListener("dragend",    onDragEnd);
+            quickLinksContainer.appendChild(row);
 
-            const sectionLink = linkElement.cloneNode(true); 
-            quickLinksSection.appendChild(sectionLink); 
+            const pill = document.createElement("a");
+            pill.href = link.url;
+            pill.textContent = link.name;
+            quickLinksSection.appendChild(pill);
         });
     }
 
@@ -79,31 +167,44 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function removeQuickLink(index) {
         const quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
-        quickLinks.splice(index, 1); 
+        quickLinks.splice(index, 1);
         localStorage.setItem("quickLinks", JSON.stringify(quickLinks));
-        loadQuickLinks(); 
+        if (editingIndex === index) cancelEdit();
+        else if (editingIndex > index) editingIndex--;
+        loadQuickLinks();
     }
+
+    addLinkButton.addEventListener("click", () => {
+        const name = quicklinkNameInput.value.trim();
+        const url  = quicklinkUrlInput.value.trim();
+        if (!name || !url) return;
+
+        if (editingIndex !== null) {
+            const quickLinks = JSON.parse(localStorage.getItem("quickLinks")) || [];
+            quickLinks[editingIndex] = { name, url };
+            localStorage.setItem("quickLinks", JSON.stringify(quickLinks));
+            cancelEdit();
+            loadQuickLinks();
+        } else {
+            saveQuickLinks(name, url);
+            quicklinkNameInput.value = "";
+            quicklinkUrlInput.value  = "";
+        }
+    });
+
+    closeQuickLinksButton.addEventListener("click", () => {
+        quickLinksSidebar.classList.remove("active");
+        cancelEdit();
+    });
 
     quickLinksIcon.addEventListener("click", () => {
         quickLinksSidebar.classList.toggle("active");
     });
 
-    closeQuickLinksButton.addEventListener("click", () => {
-        quickLinksSidebar.classList.remove("active");
-    });
-
-    addLinkButton.addEventListener("click", () => {
-        const name = quicklinkNameInput.value.trim();
-        const url = quicklinkUrlInput.value.trim();
-        
-        if (name && url) {
-            saveQuickLinks(name, url); 
-            quicklinkNameInput.value = ""; 
-            quicklinkUrlInput.value = "";
-        }
+    document.addEventListener("click", () => {
+        document.querySelectorAll(".ql-item.ql-expanded").forEach(el => el.classList.remove("ql-expanded"));
     });
 
     savePredefinedLinks();
-
     loadQuickLinks();
 });

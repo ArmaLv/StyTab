@@ -12,7 +12,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const weatherWidget = document.getElementById("weather-widget");
     const greetingElement = document.getElementById("greeting-display");
     const spotifyWidget = document.getElementById("spotify-widget");
-    
+    const spotifySettingsSection = document.getElementById("spotify-settings-section");
+
     const saveButton = document.getElementById("save-settings");
 
     // Load existing visibility settings
@@ -29,6 +30,7 @@ document.addEventListener("DOMContentLoaded", function() {
     weatherWidget.style.display = weatherVisible ? 'block' : 'none';
     greetingElement.style.display = greetingVisible ? 'block' : 'none';
     if (spotifyWidget) spotifyWidget.style.display = spotifyVisible ? 'flex' : 'none';
+    if (spotifySettingsSection) spotifySettingsSection.style.display = spotifyVisible ? '' : 'none';
 
     toggleSearchCheckbox.checked = searchBarVisible;
     toggleQuickLinksCheckbox.checked = quickLinksVisible;
@@ -36,6 +38,11 @@ document.addEventListener("DOMContentLoaded", function() {
     toggleWeatherCheckbox.checked = weatherVisible;
     toggleGreetingCheckbox.checked = greetingVisible;
     if (toggleSpotifyCheckbox) toggleSpotifyCheckbox.checked = spotifyVisible;
+    if (toggleSpotifyCheckbox && spotifySettingsSection) {
+        toggleSpotifyCheckbox.addEventListener("change", () => {
+            spotifySettingsSection.style.display = toggleSpotifyCheckbox.checked ? '' : 'none';
+        });
+    }
 
     // Save visibility settings
     saveButton.addEventListener("click", () => {
@@ -59,7 +66,8 @@ document.addEventListener("DOMContentLoaded", function() {
         weatherWidget.style.display = newWeatherVisible ? 'block' : 'none';
         greetingElement.style.display = newGreetingVisible ? 'block' : 'none';
         if (spotifyWidget) spotifyWidget.style.display = newSpotifyVisible ? 'flex' : 'none';
-        
+        if (spotifySettingsSection) spotifySettingsSection.style.display = newSpotifyVisible ? '' : 'none';
+
         if (newWeatherVisible && typeof getWeather === 'function') {
             getWeather();
         }
